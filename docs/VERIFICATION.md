@@ -20,7 +20,7 @@ This is the one run every test table in this repository quotes: the root README 
 |---|---|---|---|---|
 | enki_waypoint | 107 | OK | 2.9 to 3.9 s | 1.4 to 1.7 s |
 | malakopia_core | 103 | OK | 2.5 to 3.2 s | 1.4 to 1.7 s |
-| net_persistence_guards | 93 | OK | 0.6 to 0.9 s | 0.3 to 0.5 s |
+| net_persistence_guards | 95 | OK | 0.6 to 0.9 s | 0.3 to 0.5 s |
 | secret_leak_tools | 177 | OK | 15.6 to 19.9 s | 10.2 to 12.0 s |
 | stop_latch_autonomy | 39 | OK | 1.3 to 1.4 s | 1.1 to 1.2 s |
 | write_guards | 62 | OK | 2.0 to 2.2 s | 0.8 to 1.4 s |

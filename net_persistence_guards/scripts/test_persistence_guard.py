@@ -21,7 +21,11 @@ class T(unittest.TestCase):
 
     def tearDown(self):
         """Remove the scratch state this test created."""
-        pg.PATTERNS = self._orig; self.t.cleanup()
+        pg.PATTERNS = self._orig
+        for locked in getattr(self, "_locked", []):   # restore permissions first so the temp tree can be deleted
+            try: locked.chmod(0o700)
+            except OSError: pass
+        self.t.cleanup()
 
     def chk(self):
         """Helper: chk."""
@@ -347,9 +351,49 @@ class RedTeam5(T):
         home = self.h / "h2"
         for rel in (".zlogin", ".gitconfig", ".config/systemd/user/a.service.d/o.conf", ".config/fish/conf.d/x.fish"):
             f = home / rel; f.parent.mkdir(parents=True, exist_ok=True); f.write_text("x\n")
-        got = pg.snapshot(home, pg.PATTERNS if pg.PATTERNS is not PATS else self._orig)
+        # Hermetic: the absolute /etc patterns are read from an empty fake root, never from the real machine (CI failed
+        # on a non-root runner because /etc/sudoers.d is 0750 root there).
+        fake_root = self.h / "fakeroot"; fake_root.mkdir()
+        got = pg.snapshot(home, pg.PATTERNS if pg.PATTERNS is not PATS else self._orig, root=fake_root)
         for rel in (".zlogin", ".gitconfig", ".config/systemd/user/a.service.d/o.conf", ".config/fish/conf.d/x.fish"):
             self.assertIn("~/" + rel, got)
+
+    def _fake_root_with_locked_dir(self):
+        """A fake / holding a readable /etc/profile and an unreadable (chmod 000) /etc/sudoers.d with one file in it."""
+        root = self.h / "fakeroot2"; (root / "etc/sudoers.d").mkdir(parents=True)
+        (root / "etc/profile").write_text("p\n"); (root / "etc/sudoers.d/90-x").write_text("x\n")
+        (root / "etc/sudoers.d").chmod(0o000)
+        self._locked = getattr(self, "_locked", []) + [root / "etc/sudoers.d"]
+        return root
+
+    @unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root can read a chmod 000 directory")
+    def test_unreadable_root_only_dir_is_an_explicit_entry_not_a_crash(self):
+        """A root-owned system dir a normal user cannot list is recorded as unreadable:<dir>; the other items are still scanned."""
+        root = self._fake_root_with_locked_dir()
+        pats = ["/etc/profile", "/etc/sudoers.d/*", ".bashrc"]
+        with mock.patch.object(pg, "_root_owned_dir", return_value=True):
+            got = pg.snapshot(self.h, pats, root=root)
+            self.assertIn("/etc/profile", got); self.assertIn("~/.bashrc", got)
+            self.assertTrue(got["/etc/sudoers.d/"].startswith("unreadable:"))
+            pg.PATTERNS = pats
+            pg.learn(self.d, self.h, root=root)
+            r = pg.check(self.d, self.h, root=root)
+        self.assertTrue(r["complete"])
+        self.assertEqual(list(r["problems"]), ["persist:unreadable:/etc/sudoers.d/"])
+        self.assertIn("unreadable: sudoers.d", r["problems"]["persist:unreadable:/etc/sudoers.d/"])
+        self.assertEqual(r["unreadable"], ["/etc/sudoers.d/"])
+
+    @unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root can read a chmod 000 directory")
+    def test_unreadable_dir_not_owned_by_root_still_fails_closed(self):
+        """Only root-owned system dirs are 'unreadable by design'; any other unreadable watched dir is still GuardUnavailable."""
+        root = self._fake_root_with_locked_dir()
+        with self.assertRaises(pg.GuardUnavailable):
+            pg.snapshot(self.h, ["/etc/sudoers.d/*"], root=root)
+        with self.assertRaises(pg.GuardUnavailable):  # and a user-home pattern is never exempted, even if the owner check says root
+            lock = self.h / ".config/autostart"; lock.mkdir(parents=True); (lock / "a").write_text("x"); lock.chmod(0)
+            self._locked = getattr(self, "_locked", []) + [lock]
+            with mock.patch.object(pg, "_root_owned_dir", return_value=True):
+                pg.snapshot(self.h, [".config/autostart/*"], root=root)
 
     def test_baseline_and_receipt_are_not_written_through_a_symlink(self):
         """A symlink planted at a .tmp name (e.g. through a synced folder) must not redirect the write onto another file."""

@@ -23,6 +23,7 @@ change detectors, not protection: see [Security notes](#security-notes).
 - External commands are called by absolute path from `/bin`, `/usr/bin`, `/sbin` and `/usr/sbin` only, never through
   `PATH`, so a minimal `PATH` (launchd, cron) works. A tool that is missing, not owned by root, or writable by others is
   reported as `sensor-unavailable`.
+- Linux, non-root: root-only system folders on the watch list (for example `/etc/sudoers.d`, `/etc/cron.d` when mode 0750 root) cannot be listed. Instead of aborting the whole scan, `learn` records the folder as `<folder>/` = `unreadable:<hash of the folder's own metadata>` and every `check` reports `persist:unreadable:<folder>/` ("unreadable: sudoers.d ..."), so it never reads as clean. Only a root-owned folder matched by an absolute pattern and a permission error qualify; an unreadable folder in your home, or owned by anyone else, is still `sensor-unavailable`.
 
 ## Quick start
 ```bash
@@ -107,8 +108,10 @@ Re-measured after the bypass-hunt fixes (`docs/RED_TEAM_SEAT5.md`) [observed 202
 
 | Python | Tests ran | Raw summary lines (3 runs) |
 |---|---|---|
-| 3.9.6 (`/usr/bin/python3`) | 93 | `Ran 93 tests in 0.904s / OK`, `Ran 93 tests in 0.929s / OK`, `Ran 93 tests in 1.086s / OK` |
-| 3.13.17 (`~/.local/bin/python3.13`) | 93 | `Ran 93 tests in 0.970s / OK`, `Ran 93 tests in 0.784s / OK`, `Ran 93 tests in 0.722s / OK` |
+| 3.9.6 (`/usr/bin/python3`) | 95 | `Ran 95 tests in 1.051s / OK`, `Ran 95 tests in 1.054s / OK`, `Ran 95 tests in 0.982s / OK` |
+| 3.13.17 (`~/.local/bin/python3.13`) | 95 | `Ran 95 tests in 0.715s / OK`, `Ran 95 tests in 0.732s / OK`, `Ran 95 tests in 0.811s / OK` |
+
+Two tests were added after the first Linux CI run (ubuntu-24.04, non-root runner) failed on `/etc/sudoers.d` (mode 0750 root, unreadable): the default-pattern test now reads a fake root folder, never the real `/etc`, and two new tests cover the `unreadable:` behaviour below. The 6 runs above were repeated after that change; the code digest above predates it.
 
 Platform: macOS, arm64. These are the project's own tests; they are not an independent audit.
 

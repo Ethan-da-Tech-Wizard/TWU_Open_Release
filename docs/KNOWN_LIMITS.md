@@ -36,6 +36,7 @@ This page lists what I know does not hold, in one place. Nothing here is hidden 
 - **`net_guard` and `persistence_guard` first runs.**
   - `net_guard` needs `lsof`, `arp`, `route` and `scutil` on macOS, or `ss` and `ip` on Linux. They are called by absolute path from system folders, so a Mac without the Command Line Tools, or an unusual Linux layout, makes a check report the sensor as unavailable.
   - On a stock Mac `persistence_guard check` exits 1 after `learn`, with one `metadata-only` finding for `/etc/ssh/sshd_config`, which only root can read. That is expected, not a compromise.
+  - On Linux as a normal user, root-only folders on the watch list (`/etc/sudoers.d`, `/etc/cron.d`, mode 0750 root) cannot be listed. `learn` records each as `unreadable:` (the folder's own metadata only, never its contents) and every `check` reports it as `persist:unreadable:<folder>/`. The guard therefore never looks clean for a folder it could not read, but it cannot see new files inside such a folder; run it as root or add an approved read-only sensor for that.
   - Without root, both tools see only this user's sockets and files.
   - Nothing is exempt by name. A program that opens ephemeral UDP ports (a sync tool, a game) will alarm until you add an exact entry to the opt-in allow file, ideally pinned with the `*_SHA256` variable.
 - **State is written where you point it.** The default state folder is the component folder, under `data/`. The repository `.gitignore` excludes it, but do not copy it elsewhere: baselines and receipts describe your machine.

@@ -190,8 +190,37 @@ def _metadata_digest(st):
     return "metadata:" + h
 
 
-def _glob_checked(pattern):
-    """Expand a glob pattern component by component; a directory that exists but cannot be listed raises GuardUnavailable."""
+def _root_owned_dir(path):
+    """True when path is a directory owned by uid 0 (a system folder such as /etc/sudoers.d, mode 0750 root on many distros)."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return False
+    return stat.S_ISDIR(st.st_mode) and st.st_uid == 0
+
+
+def _unreadable_by_design(parent, exc, system, unreadable):
+    """Decide whether a directory this account cannot list is a known root-only system folder (recorded, not fatal).
+
+    Only an absolute (system) pattern, a permission error, a non-root caller and a root-owned directory qualify; anything
+    else (a folder in the home, a folder owned by another user, a different error) stays fatal so the guard never looks clean
+    when it could not look. The folder is recorded in `unreadable` as (real path, stat) so snapshot() can store an explicit
+    "unreadable:<metadata hash>" entry: change detection on the folder itself, and a finding on every check."""
+    if not (system and isinstance(exc, PermissionError) and hasattr(os, "geteuid") and os.geteuid() != 0 and _root_owned_dir(parent)):
+        return False
+    try:
+        unreadable.append((parent, os.stat(parent)))
+    except OSError:
+        return False
+    return True
+
+
+def _glob_checked(pattern, unreadable=None, system=False):
+    """Expand a glob pattern component by component; a directory that exists but cannot be listed raises GuardUnavailable.
+
+    With system=True and an `unreadable` list, a root-owned folder that a non-root caller may not list is appended to that
+    list (see _unreadable_by_design) instead of raising; the other branches of the walk continue."""
+    unreadable = [] if unreadable is None else unreadable
     # Plain glob.glob() would treat an unreadable directory as "no match" and so as a clean result. Walking the
     # components ourselves lets us tell "nothing there" (fine) from "could not look" (an incomplete scan).
     # Split the pattern into components. For an absolute pattern the root ("/") is the starting point and is
@@ -218,6 +247,8 @@ def _glob_checked(pattern):
                     # example /etc/cron.deny) before their final path component.
                     continue
                 except OSError as exc:
+                    if _unreadable_by_design(parent, exc, system, unreadable):
+                        continue
                     raise GuardUnavailable(f"could not enumerate watched directory {parent.name or parent} ({type(exc).__name__})") from exc
                 for name in names:
                     # Like a shell, a "*" does not match dot-files unless the pattern itself starts with a dot.
@@ -233,6 +264,8 @@ def _glob_checked(pattern):
                 except FileNotFoundError:
                     continue
                 except OSError as exc:
+                    if _unreadable_by_design(parent, exc, system, unreadable):
+                        continue
                     raise GuardUnavailable(f"could not inspect watched path {candidate.name} ({type(exc).__name__})") from exc
                 next_candidates.append(candidate)
         candidates = next_candidates
@@ -244,8 +277,11 @@ def _glob_checked(pattern):
 
 # snapshot() is the only place that touches the watched files. It is a pure read: no file is created,
 # modified or opened for writing, which is why `check` can run unattended every few minutes.
-def snapshot(home=None, patterns=None):
-    """Return {display path: digest} for everything the patterns match; paths under home are shown as "~/..."."""
+def snapshot(home=None, patterns=None, root=None):
+    """Return {display path: digest} for everything the patterns match; paths under home are shown as "~/...".
+
+    root (tests only) is a folder that stands in for "/" for the absolute patterns, so a test never reads the real /etc;
+    display paths never contain it. A root-only system folder this account cannot list appears as "<folder>/": "unreadable:<hash>"."""
     # A home passed in (tests) wins over the module default, which in turn comes from TWU_PERSIST_HOME.
     home = Path(home or HOME)
     patterns = PATTERNS if patterns is None else patterns
@@ -253,10 +289,18 @@ def snapshot(home=None, patterns=None):
     # Sorting the matches of each pattern keeps the snapshot (and so the baseline file) stable between runs.
     for pat in patterns:
         # Absolute patterns stand alone; relative ones hang off the home folder.
-        full = pat if pat.startswith("/") else str(home / pat)
-        for match in sorted(_glob_checked(full)):
-            p = str(match)
-            d = digest(p)
+        system = pat.startswith("/")
+        full = (str(root).rstrip("/") + pat if root else pat) if system else str(home / pat)
+        unreadable = []
+        matches = sorted(_glob_checked(full, unreadable, system))
+        for folder, st in unreadable:
+            shown = str(folder)[len(str(root).rstrip("/")):] if root else str(folder)
+            out[shown.rstrip("/") + "/"] = "unreadable:" + _metadata_digest(st)[len("metadata:"):]
+        for match in matches:
+            real = str(match)
+            # Display name: the real path, minus the stand-in root for absolute patterns.
+            p = real[len(str(root).rstrip("/")):] if (system and root) else real
+            d = digest(real)
             # digest() is None for directories, which are skipped.
             if d:
                 # Store "~" instead of the real home so a baseline is readable and does not embed the user name.
@@ -392,12 +436,12 @@ def _write_learn_receipt(base_p, before, tool, accepted=None):
 
 # learn() trusts whatever is on disk right now. Run it only after you have looked at `show` output or the
 # findings, because a compromised machine will happily learn a compromised baseline.
-def learn(d=None, home=None):
+def learn(d=None, home=None, root=None):
     """Accept the current state of every watched place as the new baseline and return it."""
     b, _ = paths(d=d)
     b.parent.mkdir(parents=True, exist_ok=True)
     # Scan first: if the scan raises GuardUnavailable the old baseline is left untouched.
-    s = snapshot(home)
+    s = snapshot(home, root=root)
     before = _sha(b)
     # The baseline is made private (0600) because it lists which startup items and keys exist on this machine.
     _write_nofollow(b, json.dumps(s, indent=1))
@@ -449,14 +493,14 @@ def learn_only(keys, d=None, home=None):
 
 # check() is what the scheduler runs. The receipt it writes is what a monitoring wrapper reads later, so it
 # records completeness explicitly: complete=False means the scan itself failed and the problems dict says why.
-def check(d=None, home=None, exempt=None):
+def check(d=None, home=None, exempt=None, root=None):
     """Scan, compare with the baseline, write the receipt and return it. A scan that could not finish is itself a finding."""
     b, latest = paths(d=d)
     # now stays None if the scan fails, which is how the receipt below knows not to report an item count.
     now = None
     complete = False
     try:
-        now = snapshot(home)
+        now = snapshot(home, root=root)
         if not b.exists():
             # No baseline is reported, never treated as "all clear". The fix text tells a new user what to do first.
             problems, info = {"persist:no-baseline": "persistence: no baseline yet | fix: python3 scripts/persistence_guard.py learn"}, []
@@ -477,10 +521,19 @@ def check(d=None, home=None, exempt=None):
             problems[f"persist:metadata-only:{path}"] = (
                 f"persistence: content is unreadable; metadata-only change detection for {path} | "
                 "fix: review this root-owned file's access or provide an approved read-only hash sensor")
+    # Root-only system folders this account may not list are recorded in the baseline as "unreadable:" and reported on every
+    # check: the guard says plainly that it could not look inside them (it never reads as clean), but the rest of the scan is valid.
+    unreadable = sorted(p for p, value in (now or {}).items() if value.startswith("unreadable:"))
+    if complete:
+        for path in unreadable:
+            problems[f"persist:unreadable:{path}"] = (
+                f"persistence: unreadable: {path.rstrip('/').rsplit('/', 1)[-1]} (root-only folder, contents not inspected; only the folder's own "
+                f"metadata is watched) | fix: run the guard as root or provide an approved read-only hash sensor for {path}")
     # The receipt keeps at most 50 info lines so a mass-exempt tree cannot grow it without bound.
     r = {"checked": time.time(), "host": HOST, "complete": complete,
          "problems": problems, "info": info[:50], "items": len(now) if complete else None}
     r["metadata_only"] = metadata_only
+    r["unreadable"] = unreadable
     latest.parent.mkdir(parents=True, exist_ok=True)
     _write_nofollow(latest, json.dumps(r, indent=1))  # atomic: a reader never sees a half-written receipt
     return r
