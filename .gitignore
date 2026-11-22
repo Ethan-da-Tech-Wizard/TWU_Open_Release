@@ -1,0 +1,30 @@
+# Output the tools write about the machine they ran on. Never commit these.
+data/
+state/
+receipts/
+logs/
+*.log
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+STOP
+
+# Secrets and local config copies (config.example.env stays tracked)
+.env
+.env.*
+my.env
+*.local.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Editors, OS, scratch
+.DS_Store
+*.tmp
+*.swp
+.idea/
+.vscode/
+dist/

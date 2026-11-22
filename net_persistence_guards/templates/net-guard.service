@@ -1,0 +1,23 @@
+# systemd user unit for the network guard. @@ROOT@@ is the absolute path of this component folder; render it with
+# sed (README, "Linux (systemd)") before installing. Linux support is untested; see the README limits.
+[Unit]
+Description=Network guard: compare listeners, gateway MAC, DNS and outbound ports to the baseline
+ConditionPathExists=@@ROOT@@/scripts/net_guard.py
+
+[Service]
+Type=oneshot
+WorkingDirectory=@@ROOT@@
+ExecStart=/usr/bin/python3 -B scripts/net_guard.py
+# Exit status 1 means "findings were reported", not "the unit failed".
+SuccessExitStatus=0 1
+Nice=19
+CPUQuota=25%
+MemoryMax=1G
+TimeoutStartSec=300
+NoNewPrivileges=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+UMask=0077
+RestrictAddressFamilies=AF_UNIX AF_NETLINK

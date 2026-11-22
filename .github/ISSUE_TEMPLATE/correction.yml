@@ -1,0 +1,20 @@
+name: Correction or overclaim
+description: A claim in a README or doc that the code or tests do not support
+labels: [documentation, correction]
+body:
+  - type: input
+    id: where
+    attributes:
+      label: File and line or heading
+    validations: {required: true}
+  - type: textarea
+    id: claim
+    attributes:
+      label: What it claims
+    validations: {required: true}
+  - type: textarea
+    id: evidence
+    attributes:
+      label: What you found instead
+      description: Command, version, raw output. Say whether you ran it yourself.
+    validations: {required: true}

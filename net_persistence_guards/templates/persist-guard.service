@@ -1,0 +1,31 @@
+# systemd user unit for the persistence guard. @@ROOT@@ is the absolute path of this component folder; render it with
+# sed (README, "Linux (systemd)") before installing. Linux support is untested; see the README limits.
+[Unit]
+Description=Persistence guard: new or changed startup items, ssh keys, shell rc
+ConditionPathExists=@@ROOT@@/scripts/persistence_guard.py
+
+[Service]
+Type=oneshot
+WorkingDirectory=@@ROOT@@
+ExecStart=/usr/bin/python3 -B scripts/persistence_guard.py check
+# Exit status 1 means "findings were reported", not "the unit failed".
+SuccessExitStatus=1
+Nice=19
+CPUQuota=25%
+MemoryMax=1G
+TimeoutStartSec=300
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=@@ROOT@@
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+UMask=0077
+RestrictAddressFamilies=AF_UNIX
+ProtectKernelLogs=true
+CapabilityBoundingSet=

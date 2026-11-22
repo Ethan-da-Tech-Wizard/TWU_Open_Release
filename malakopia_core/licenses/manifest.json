@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "local_filename_base": ".",
+  "entries": [
+    {
+      "status": "obtained",
+      "local_filename": "MIT.txt",
+      "bytes": 1077,
+      "sha256": "ece1876cc962b6de54e9e31467322eac3297ad3bcb3ece3d59565c5506416411"
+    }
+  ]
+}

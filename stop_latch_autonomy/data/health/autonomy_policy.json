@@ -1,0 +1,208 @@
+{
+  "note": "Example policy: identical to the built-in seed rules. Copy it, edit it, run `python3 scripts/twu_autonomy.py validate`.",
+  "rules": [
+    {
+      "id": "auto-knowledge-index",
+      "class": "AUTO",
+      "match": "refresh_knowledge_index",
+      "reason": "rebuild the local knowledge index; workspace-only, free",
+      "source": "Project policy: routine maintenance tasks run unattended when they are local, read-only or self-contained"
+    },
+    {
+      "id": "auto-integrity",
+      "class": "AUTO",
+      "match": "run_integrity",
+      "reason": "read-only integrity run",
+      "source": "Project policy: routine maintenance tasks run unattended when they are local, read-only or self-contained"
+    },
+    {
+      "id": "auto-leakwatch",
+      "class": "AUTO",
+      "match": "run_leakwatch_*",
+      "reason": "offline leak scan, sends nothing out",
+      "source": "Project policy: routine maintenance tasks run unattended when they are local, read-only or self-contained"
+    },
+    {
+      "id": "auto-linkmap",
+      "class": "AUTO",
+      "match": "run_linkmap",
+      "reason": "read-only link map",
+      "source": "Project policy: routine maintenance tasks run unattended when they are local, read-only or self-contained"
+    },
+    {
+      "id": "auto-offline-proof",
+      "class": "AUTO",
+      "match": "run_offline_proof",
+      "reason": "read-only offline proof",
+      "source": "Project policy: routine maintenance tasks run unattended when they are local, read-only or self-contained"
+    },
+    {
+      "id": "auto-forever",
+      "class": "AUTO",
+      "match": "run_forever_checks",
+      "reason": "read-only forever checks",
+      "source": "Project policy: routine maintenance tasks run unattended when they are local, read-only or self-contained"
+    },
+    {
+      "id": "auto-regenerate",
+      "class": "AUTO",
+      "match": "regenerate_*",
+      "reason": "regenerate generated files and caches",
+      "source": "Project policy: routine maintenance tasks run unattended when they are local, read-only or self-contained"
+    },
+    {
+      "id": "auto-enki-resmoke",
+      "class": "AUTO",
+      "match": "resmoke_enki_tools",
+      "reason": "re-run the smoke tests after the agent's own script edits",
+      "source": "Project policy: routine maintenance tasks run unattended when they are local, read-only or self-contained"
+    },
+    {
+      "id": "auto-rotate-logs",
+      "class": "AUTO",
+      "match": "rotate_own_logs",
+      "reason": "rotate the agent's own capped logs",
+      "source": "Project policy: background daemons are deterministic, event-driven and use near-zero idle CPU"
+    },
+    {
+      "id": "auto-malware-scan",
+      "class": "AUTO",
+      "match": "run_malware_scan",
+      "reason": "malware scan only reads files and runs local scanners; sends nothing out",
+      "source": "Project policy: security tooling must be real and protective, event-driven, with no telemetry and no spend"
+    },
+    {
+      "id": "propose-update-clamav-signatures",
+      "class": "PROPOSE",
+      "match": "update_clamav_signatures",
+      "reason": "fetches antivirus signatures from the official mirror (free, no telemetry); shown as 'update available, approve'",
+      "source": "Project policy: security tooling must be real and protective, event-driven, with no telemetry and no spend"
+    },
+    {
+      "id": "propose-update-yara-rules",
+      "class": "PROPOSE",
+      "match": "update_yara_rules",
+      "reason": "refreshing vetted YARA rules means downloading a pinned commit and re-running the vet; never silent",
+      "source": "Project policy: security tooling must be real and protective, event-driven, with no telemetry and no spend"
+    },
+    {
+      "id": "propose-edit-source",
+      "class": "PROPOSE",
+      "match": "edit_source*",
+      "reason": "changes source code",
+      "source": "Project policy: changes to code, files, services and settings need a reviewed, scoped approval"
+    },
+    {
+      "id": "propose-delete",
+      "class": "PROPOSE",
+      "match": "delete_*",
+      "reason": "deletes files",
+      "source": "Project policy: changes to code, files, services and settings need a reviewed, scoped approval"
+    },
+    {
+      "id": "propose-move",
+      "class": "PROPOSE",
+      "match": "move_*",
+      "reason": "moves files",
+      "source": "Project policy: changes to code, files, services and settings need a reviewed, scoped approval"
+    },
+    {
+      "id": "propose-install",
+      "class": "PROPOSE",
+      "match": "install_*",
+      "reason": "installs software or services",
+      "source": "Project policy: changes to code, files, services and settings need a reviewed, scoped approval"
+    },
+    {
+      "id": "propose-system-settings",
+      "class": "PROPOSE",
+      "match": "change_system_settings*",
+      "reason": "changes system settings",
+      "source": "Project policy: changes to code, files, services and settings need a reviewed, scoped approval"
+    },
+    {
+      "id": "propose-upload",
+      "class": "PROPOSE",
+      "match": "upload_*",
+      "reason": "sends data somewhere",
+      "source": "Project policy: changes to code, files, services and settings need a reviewed, scoped approval"
+    },
+    {
+      "id": "propose-commit",
+      "class": "PROPOSE",
+      "match": "git_commit*",
+      "reason": "commits",
+      "source": "Project policy: changes to code, files, services and settings need a reviewed, scoped approval"
+    },
+    {
+      "id": "propose-spend",
+      "class": "PROPOSE",
+      "match": "spend_*",
+      "reason": "spends money",
+      "source": "Project policy: nothing should cost money"
+    },
+    {
+      "id": "never-offensive",
+      "class": "NEVER",
+      "match": "run_offensive_tool*",
+      "reason": "offensive tools",
+      "source": "Project policy: these actions are never taken automatically"
+    },
+    {
+      "id": "never-collect-ids",
+      "class": "NEVER",
+      "match": "collect_identifiers*",
+      "reason": "other people's identifiers",
+      "source": "Project policy: these actions are never taken automatically"
+    },
+    {
+      "id": "never-telemetry",
+      "class": "NEVER",
+      "match": "send_telemetry*",
+      "reason": "telemetry to third parties",
+      "source": "Project policy: nothing sends telemetry to anyone outside the project's own systems"
+    },
+    {
+      "id": "never-weights-delete",
+      "class": "NEVER",
+      "match": "delete_model_weights*",
+      "reason": "model weights are never deleted",
+      "source": "Project policy: these actions are never taken automatically"
+    },
+    {
+      "id": "never-weights-move",
+      "class": "NEVER",
+      "match": "move_model_weights*",
+      "reason": "model weights are never moved",
+      "source": "Project policy: these actions are never taken automatically"
+    },
+    {
+      "id": "never-expose",
+      "class": "NEVER",
+      "match": "expose_private_data*",
+      "reason": "private data stays private",
+      "source": "Project policy: these actions are never taken automatically"
+    },
+    {
+      "id": "never-bypass-stop",
+      "class": "NEVER",
+      "match": "bypass_stop*",
+      "reason": "STOP always wins",
+      "source": "Project policy: these actions are never taken automatically"
+    },
+    {
+      "id": "never-bypass-guards",
+      "class": "NEVER",
+      "match": "bypass_guard*",
+      "reason": "guards are boundaries",
+      "source": "Project policy: these actions are never taken automatically"
+    },
+    {
+      "id": "never-pay",
+      "class": "NEVER",
+      "match": "pay_money*",
+      "reason": "no paid services or spending",
+      "source": "Project policy: nothing should cost money"
+    }
+  ]
+}

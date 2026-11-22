@@ -1,0 +1,32 @@
+name: Bug report
+description: Something fails or behaves differently from what a README says
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report vulnerabilities here. Use the Security tab, "Report a vulnerability". Do not paste real hostnames, usernames, IPs, keys or personal paths.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options: [enki_waypoint, malakopia_core, net_persistence_guards, secret_leak_tools, stop_latch_autonomy, write_guards, repo root or docs, other]
+    validations: {required: true}
+  - type: input
+    id: env
+    attributes:
+      label: Python version and OS
+      placeholder: "for example Python 3.13, Ubuntu 24.04"
+    validations: {required: true}
+  - type: textarea
+    id: steps
+    attributes:
+      label: Exact command and what you expected
+    validations: {required: true}
+  - type: textarea
+    id: output
+    attributes:
+      label: Raw output
+      description: Paste the output as it appeared, with private values removed.
+      render: text
+    validations: {required: true}

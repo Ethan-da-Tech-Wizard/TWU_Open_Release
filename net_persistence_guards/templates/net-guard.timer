@@ -1,0 +1,10 @@
+[Unit]
+Description=Network guard check 2 minutes after login and every 2 minutes
+
+[Timer]
+OnActiveSec=2min
+OnCalendar=*:0/2
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template for scripts/mac_persistence_guard_install.sh. Placeholders @@PYTHON@@, @@SCRIPT@@, @@ROOT@@ and @@HOME@@ are filled in by the installer. User-level, short run every 15 minutes. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.net-persistence-guards.persistence-guard</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>@@PYTHON@@</string>
+        <string>-I</string>
+        <string>@@SCRIPT@@</string>
+        <string>check</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>@@ROOT@@</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StartInterval</key>
+    <integer>900</integer>
+    <key>Nice</key>
+    <integer>19</integer>
+    <key>LowPriorityIO</key>
+    <true/>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>StandardOutPath</key>
+    <string>@@HOME@@/Library/Logs/persistence-guard.log</string>
+    <key>StandardErrorPath</key>
+    <string>@@HOME@@/Library/Logs/persistence-guard.err</string>
+</dict>
+</plist>

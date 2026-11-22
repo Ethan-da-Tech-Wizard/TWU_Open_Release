@@ -1,0 +1,59 @@
+# CI for the release repo. Pushing this file needs a token with the `workflow` scope (see docs/VERIFICATION.md).
+# A green run means: each component's own tests passed on that OS and Python, the two queue copies match, and the
+# leak check found no private paths, leftover placeholders, key blocks or overclaim words. Nothing more.
+name: ci
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+
+jobs:
+  leak-check:
+    name: placeholder and leak check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder, private-path, key and overclaim check
+        env:
+          CHECK_PLACEHOLDERS_IGNORE_FILE: tools/leak_ignore.txt
+        run: bash tools/check_placeholders.sh .
+
+  queue-sync:
+    name: queue copies are identical
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh tools/check_queue_sync.sh
+
+  test:
+    name: ${{ matrix.component }} (py${{ matrix.python }}, ${{ matrix.os }})
+    needs: [leak-check, queue-sync]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest]
+        python: ["3.9", "3.13"]
+        component:
+          - enki_waypoint
+          - malakopia_core
+          - net_persistence_guards
+          - secret_leak_tools
+          - stop_latch_autonomy
+          - write_guards
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run the component's tests with a scratch HOME and TMPDIR
+        working-directory: ${{ matrix.component }}
+        run: |
+          set -o pipefail
+          test -f run_tests.sh || { echo "missing run_tests.sh"; exit 1; }
+          scratch=$(mktemp -d)
+          mkdir "$scratch/home" "$scratch/tmp"
+          HOME="$scratch/home" TMPDIR="$scratch/tmp" PYTHON=python bash run_tests.sh 2>&1 | tee "$scratch/test_output.txt"
+          echo "--- raw summary (copy into docs by hand, tagged with this run's date) ---"
+          tail -n 5 "$scratch/test_output.txt"

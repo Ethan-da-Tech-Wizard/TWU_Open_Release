@@ -1,0 +1,4 @@
+# SHA-256 of the queue module and its test. Both copies (malakopia_core/scripts and enki_waypoint/scripts) must match this file.
+# After changing either file, change BOTH copies and update BOTH copies of this record (shasum -a 256 <file>).
+malakopia_job_queue.py bce3c14d18124a423238fddad2dce51c9e51d2edeeef0ade05fdb57a4a2f1ada
+test_malakopia_job_queue.py 7707b117d5f6d292798f14843809562a5ed57987fb960f61508583e2562d827e

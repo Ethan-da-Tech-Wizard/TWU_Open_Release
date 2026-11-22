@@ -1,0 +1,12 @@
+{
+  "README.md": "README.md",
+  "LICENSE": "LICENSE",
+  "examples/one_command.py": "examples/one_command.py",
+  "scripts/malakopia_engine.py": "scripts/malakopia_engine.py",
+  "scripts/malakopia_completion.py": "scripts/malakopia_completion.py",
+  "scripts/malakopia_decompose.py": "scripts/malakopia_decompose.py",
+  "scripts/malakopia_local_tasks.py": "scripts/malakopia_local_tasks.py",
+  "scripts/malakopia_job_queue.py": "scripts/malakopia_job_queue.py",
+  "scripts/malakopia_export.py": "scripts/malakopia_export.py",
+  "scripts/test_malakopia_engine.py": "tests/test_malakopia_engine.py"
+}
